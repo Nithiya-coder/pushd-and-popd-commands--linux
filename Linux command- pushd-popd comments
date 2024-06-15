@@ -1,0 +1,81 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <limits.h>
+
+#define STACK_SIZE 100
+
+char *stack[STACK_SIZE];
+int top = -1;
+
+void push(const char *dir) {
+    if (top >= STACK_SIZE - 1) {
+        fprintf(stderr, "Stack is full, cannot push more directories.\n");
+        return;
+    }
+    stack[++top] = strdup(dir);
+}
+
+char *pop() {
+    if (top < 0) {
+        fprintf(stderr, "Stack is empty, cannot pop any directories.\n");
+        return NULL;
+    }
+    return stack[top--];
+}
+
+void pushd(const char *newDir) {
+    char cwd[PATH_MAX];
+    if (getcwd(cwd, sizeof(cwd)) == NULL) {
+        perror("getcwd() error");
+        return;
+    }
+    push(cwd);
+    if (chdir(newDir) != 0) {
+        perror("chdir() error");
+    }
+}
+
+void popd() {
+    char *dir = pop();
+    if (dir != NULL) {
+        if (chdir(dir) != 0) {
+            perror("chdir() error");
+        }
+        free(dir);
+    }
+}
+
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
+        fprintf(stderr, "Usage: %s <command> [directory]\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    if (strcmp(argv[1], "pushd") == 0) {
+        if (argc != 3) {
+            fprintf(stderr, "Usage: %s pushd <directory>\n", argv[0]);
+            return EXIT_FAILURE;
+        }
+        pushd(argv[2]);
+    } else if (strcmp(argv[1], "popd") == 0) {
+        if (argc != 2) {
+            fprintf(stderr, "Usage: %s popd\n", argv[0]);
+            return EXIT_FAILURE;
+        }
+        popd();
+    } else {
+        fprintf(stderr, "Invalid command. Use 'pushd' or 'popd'.\n");
+        return EXIT_FAILURE;
+    }
+
+    char cwd[PATH_MAX];
+    if (getcwd(cwd, sizeof(cwd)) != NULL) {
+        printf("Current directory: %s\n", cwd);
+    } else {
+        perror("getcwd() error");
+    }
+
+    return EXIT_SUCCESS;
+}
